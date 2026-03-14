@@ -25,14 +25,16 @@ These datasets provide clothing images along with textual descriptions and outfi
 
 ## Project Structure
 
+```
 fashion-outfit-recommendation
-
+│
 ├── data
 ├── notebooks
 ├── src
 ├── models
 ├── README.md
 └── PROJECT_ABSTRACT.md
+```
 
 
 ## Setup Instructions
