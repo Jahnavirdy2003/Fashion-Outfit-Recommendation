@@ -31,6 +31,7 @@ fashion-outfit-recommendation
 ├── data
 ├── notebooks
 ├── src
+│   └── main.py
 ├── models
 ├── README.md
 └── PROJECT_ABSTRACT.md
