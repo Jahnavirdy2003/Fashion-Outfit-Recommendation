@@ -40,6 +40,7 @@ class PolyvoreDataset(Dataset):
             outfit_to_items[outfit_id].append(idx)
 
         outfit_ids = list(outfit_to_items.keys())
+        outfit_ids = outfit_ids[:500]  # use only 500 outfits for fast training
         random.seed(42)
         random.shuffle(outfit_ids)
 
