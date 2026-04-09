@@ -1,0 +1,6 @@
+venv/
+data/polyvore_outfits/
+models/*.pt
+__pycache__/
+*.pyc
+.env
