@@ -118,3 +118,21 @@ git commit -m "results: add outputs from 6 hyperparameter tuning experiments"
 Previous single-run results (before experiment system):
 - Accuracy: 69.75% (70.19% at best epoch)
 - AUC: 0.7632 (0.7517 on re-eval)
+---
+## Phase 3: Experiment Runner Improvements
+
+### src/experiment.py — BUG FIX
+- **Fixed ValueError on line 240** — old code tried to read CSV as raw text lines (`open().readlines()`), crashed with `could not convert string to float`
+- Replaced with clean pandas `pd.read_csv()` approach for best epoch calculation
+- **Commit message:** `fix(experiment): fix best_epoch CSV parsing crash after training`
+
+### run_all_experiments.sh — UPDATED
+- **Added sanity check** — runs a quick 100-outfit, 1-epoch test before starting real experiments
+- If sanity check fails, script exits immediately instead of wasting hours
+- **Added auto-backup** — zips existing experiments to `experiments/backups/backup_YYYYMMDD_HHMMSS.zip` before clearing
+- Backups exclude previous backup zips to avoid nesting
+- Old experiment folders are cleaned but `backups/` is preserved
+- **Commit message:** `feat: add sanity check, auto-backup, and backup directory to experiment runner`
+
+### .gitignore — UPDATED
+- Added `experiments/backups/` to prevent large zip files from being committed

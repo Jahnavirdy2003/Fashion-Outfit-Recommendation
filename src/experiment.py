@@ -232,20 +232,18 @@ def run_experiment(name, num_outfits, epochs, lr, batch_size, freeze_backbone,
     accuracy   = eval_correct / eval_total * 100
     auc        = roc_auc_score(all_labels, all_scores)
 
+    # Calculate best epoch from training log
+    import pandas as pd
+    df = pd.read_csv(log_path)
+    best_epoch = int(df.loc[df["val_loss"].astype(float).idxmin(), "epoch"])
+
     eval_results = {
         "val_loss": round(eval_loss, 4),
         "accuracy": round(accuracy, 2),
         "auc": round(auc, 4),
         "total_training_time_sec": round(total_time, 0),
-        "best_epoch": int(np.argmin([float(r) for r in
-            open(log_path).readlines()[1:]])) + 1 if os.path.exists(log_path) else -1,
+        "best_epoch": best_epoch,
     }
-
-    # Recalculate best epoch properly
-    import pandas as pd
-    df = pd.read_csv(log_path)
-    best_epoch = int(df.loc[df["val_loss"].astype(float).idxmin(), "epoch"])
-    eval_results["best_epoch"] = best_epoch
 
     with open(os.path.join(exp_dir, "eval_results.json"), "w") as f:
         json.dump(eval_results, f, indent=2)
