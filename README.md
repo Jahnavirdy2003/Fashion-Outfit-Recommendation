@@ -180,6 +180,20 @@ python src/experiment.py --name my_exp --outfits 5000 --epochs 5 --lr 1e-4
 python src/experiment.py --compare
 ```
 
+### Experiment options
+```bash
+python src/experiment.py \
+  --name experiment_name \    # Required: unique name for this run
+  --outfits 5000 \            # Number of outfits to train on (default: 5000)
+  --epochs 5 \                # Training epochs (default: 5)
+  --lr 1e-4 \                 # Learning rate (default: 1e-4)
+  --batch_size 32 \           # Batch size (default: 32)
+  --freeze \                  # Freeze EfficientNet backbone (default: unfrozen)
+  --dropout 0.3 \             # Dropout rate (default: 0.3)
+  --weight_decay 1e-4 \       # Weight decay (default: 1e-4)
+  --compare                   # Compare all experiments (no training)
+```
+
 ---
 
 ## Results
