@@ -3,4 +3,10 @@ data/polyvore_outfits/
 models/*.pt
 __pycache__/
 *.pyc
-.env
+.env.DS_Store
+.claude/
+experiment_log.txt
+data/sample_query.jpg
+src/dataset_old.py
+src/model_old.py
+experiments/
