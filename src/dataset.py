@@ -30,7 +30,8 @@ val_transform = transforms.Compose([
 
 
 class PolyvoreDataset(Dataset):
-    def __init__(self, split: str = "train", val_ratio: float = 0.1):
+    def __init__(self, split: str = "train", val_ratio: float = 0.1,
+                 num_outfits: int = 5000):
         ds = load_from_disk(DATA_PATH)["data"]
 
         # Group items by outfit ID (part before '_' in item_ID)
@@ -40,7 +41,7 @@ class PolyvoreDataset(Dataset):
             outfit_to_items[outfit_id].append(idx)
 
         outfit_ids = list(outfit_to_items.keys())
-        outfit_ids = outfit_ids[:500]  # use only 500 outfits for fast training
+        outfit_ids = outfit_ids[:num_outfits]  # configurable subset size
         random.seed(42)
         random.shuffle(outfit_ids)
 

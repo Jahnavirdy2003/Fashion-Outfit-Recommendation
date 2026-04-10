@@ -9,7 +9,7 @@ from encoders import ImageEncoder, TextEncoder, EMBED_DIM
 
 
 class FashionCompatibilityModel(nn.Module):
-    def __init__(self, embed_dim: int = EMBED_DIM):
+    def __init__(self, embed_dim: int = EMBED_DIM, dropout: float = 0.3):
         super().__init__()
         self.img_encoder  = ImageEncoder(embed_dim)
         self.text_encoder = TextEncoder(embed_dim)
@@ -19,7 +19,7 @@ class FashionCompatibilityModel(nn.Module):
         self.compat_head = nn.Sequential(
             nn.Linear(embed_dim, 128),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(dropout),
             nn.Linear(128, 1),
             nn.Sigmoid(),
         )
