@@ -37,6 +37,38 @@ val_transform = transforms.Compose([
                          [0.229, 0.224, 0.225]),
 ])
 
+# Map dataset categories to groups
+TOPS = ["Tops", "Blouses", "T-Shirts", "Tank Tops", "Sweaters", "Sweatshirts"]
+OUTERWEAR = ["Jackets", "Coats"]
+BOTTOMS = ["Pants", "Skinny Jeans", "Shorts", "Knee Length Skirts", "Leggings"]
+DRESSES = ["Day Dresses", "Cocktail Dresses", "Maxi Dresses"]
+SHOES = ["Sandals", "Pumps", "Ankle Booties", "Sneakers", "Boots", "Flats"]
+BAGS = ["Shoulder Bags", "Clutches", "Handbags", "Tote Bags", "Backpacks"]
+JEWELRY = ["Earrings", "Necklaces", "Bracelets & Bangles", "Rings"]
+ACCESSORIES = ["Sunglasses", "Hats", "Watches", "Belts", "Scarves"]
+
+# What to recommend for each group
+COMPATIBLE = {
+    "tops":       BOTTOMS + SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
+    "outerwear":  TOPS + BOTTOMS + SHOES + BAGS + DRESSES,
+    "bottoms":    TOPS + SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
+    "dresses":    SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
+    "shoes":      TOPS + BOTTOMS + DRESSES + BAGS,
+    "bags":       TOPS + BOTTOMS + DRESSES + SHOES + OUTERWEAR,
+    "jewelry":    TOPS + BOTTOMS + DRESSES,
+    "accessories": TOPS + BOTTOMS + DRESSES + SHOES,
+}
+
+def get_category_group(category: str) -> str:
+    if category in TOPS: return "tops"
+    if category in OUTERWEAR: return "outerwear"
+    if category in BOTTOMS: return "bottoms"
+    if category in DRESSES: return "dresses"
+    if category in SHOES: return "shoes"
+    if category in BAGS: return "bags"
+    if category in JEWELRY: return "jewelry"
+    if category in ACCESSORIES: return "accessories"
+    return "unknown"
 
 # ── Load model + catalog (cached so it only runs once) ──
 @st.cache_resource
@@ -81,11 +113,40 @@ def get_recommendations(query_img: Image.Image, query_text: str, top_k: int):
     c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
     sims = (c_norm @ q_norm).numpy()
 
-    top_indices = np.argsort(sims)[::-1][:top_k]
+    sorted_indices = np.argsort(sims)[::-1]
+
+    # Detect query category from text or let user pick
+    query_group = None
+    if query_text:
+        # Check if query text matches any known category
+        for cat in TOPS + OUTERWEAR + BOTTOMS + DRESSES + SHOES + BAGS + JEWELRY + ACCESSORIES:
+            if cat.lower() in query_text.lower():
+                query_group = get_category_group(cat)
+                break
+        # Also check common words
+        qt = query_text.lower()
+        if not query_group:
+            if any(w in qt for w in ["shirt", "polo", "tee", "top", "blouse", "sweater"]):
+                query_group = "tops"
+            elif any(w in qt for w in ["pant", "jean", "short", "skirt", "legging"]):
+                query_group = "bottoms"
+            elif any(w in qt for w in ["dress"]):
+                query_group = "dresses"
+            elif any(w in qt for w in ["shoe", "boot", "sandal", "sneaker", "pump", "heel"]):
+                query_group = "shoes"
+            elif any(w in qt for w in ["jacket", "coat"]):
+                query_group = "outerwear"
+            elif any(w in qt for w in ["bag", "clutch", "tote", "backpack"]):
+                query_group = "bags"
 
     results = []
-    for idx in top_indices:
+    compatible_cats = COMPATIBLE.get(query_group, []) if query_group else []
+
+    for idx in sorted_indices:
         item = metadata[idx]
+        # If we know query group, only show compatible categories
+        if compatible_cats and item["category"] not in compatible_cats:
+            continue
         results.append({
             "item_id": item["item_id"],
             "category": item["category"],
@@ -93,6 +154,10 @@ def get_recommendations(query_img: Image.Image, query_text: str, top_k: int):
             "score": float(sims[idx]),
             "catalog_idx": idx,
         })
+        if len(results) >= top_k:
+            break
+        if len(results) >= top_k:
+            break
     return results
 
 
@@ -121,8 +186,8 @@ with st.sidebar:
     st.header("Settings")
     top_k = st.slider("Number of recommendations", 3, 10, 5)
     query_text = st.text_input(
-        "Item description (optional)",
-        placeholder="e.g., blue denim jacket, summer dress"
+        "Item description (helps filter results)",
+        placeholder="e.g., polo shirt, blue denim jacket, summer dress"
     )
     st.markdown("---")
     st.markdown("### How it works")
