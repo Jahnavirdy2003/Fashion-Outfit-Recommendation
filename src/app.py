@@ -70,6 +70,29 @@ def get_category_group(category: str) -> str:
     if category in ACCESSORIES: return "accessories"
     return "unknown"
 
+def detect_category(query_img: Image.Image, model, embeddings, metadata):
+    """Auto-detect the query item's category by finding most similar catalog items."""
+    img_t = val_transform(query_img).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        query_emb = model.encode_item(img_t, ["fashion item"], DEVICE).squeeze(0).cpu()
+    
+    cat_matrix = torch.stack(embeddings)
+    q_norm = query_emb / (query_emb.norm() + 1e-8)
+    c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
+    sims = (c_norm @ q_norm).numpy()
+    
+    top_indices = np.argsort(sims)[::-1][:10]
+    categories = [metadata[idx]["category"] for idx in top_indices]
+    
+    from collections import Counter
+    counts = Counter(categories).most_common()
+    # Skip "Clothing" since it's too generic
+    for cat, count in counts:
+        if cat != "Clothing":
+            return cat
+    return counts[0][0]
+
+
 # ── Load model + catalog (cached so it only runs once) ──
 @st.cache_resource
 def load_model():
@@ -232,7 +255,16 @@ if query_image:
     with col_query:
         st.subheader("Your item")
         st.image(query_image, use_container_width=True)
-        if query_text:
+        
+        # Auto-detect category if no text provided
+        if not query_text:
+            model = load_model()
+            embeddings, metadata = load_catalog()
+            detected = detect_category(query_image, model, embeddings, metadata)
+            detected_group = get_category_group(detected)
+            query_text = detected  # Use detected category for filtering
+            st.caption(f"Detected category: **{detected}** ({detected_group})")
+        else:
             st.caption(f"Description: *{query_text}*")
 
     with col_results:
