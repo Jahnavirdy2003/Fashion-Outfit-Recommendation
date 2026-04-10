@@ -29,22 +29,22 @@ The system learns compatibility by studying thousands of real outfits curated by
 
 ```
 Query Image + Text Description
-        │
-        ▼
+                │
+                ▼
 ┌───────────────────────────────┐
 │        ENCODING LAYER         │
 │  ImageEncoder  + TextEncoder  │
 │  (EfficientNet)  (SBERT)      │
-│       ↓               ↓      │
+│       ↓               ↓       │
 │     256-dim         256-dim   │
-│          └─── + ───┘         │
+│          └─── + ───┘          │
 │         Fused Embedding       │
 └───────────────┬───────────────┘
                 │
                 ▼
 ┌───────────────────────────────┐
 │      COMPATIBILITY LAYER      │
-│  |emb_A - emb_B| → MLP →     │
+│  |emb_A - emb_B| → MLP →      │
 │  score (0=incompatible,       │
 │         1=compatible)         │
 └───────────────┬───────────────┘

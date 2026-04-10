@@ -14,7 +14,12 @@ from model import FashionCompatibilityModel
 CKPT_PATH  = "models/best_model.pt"
 EMB_CACHE  = "models/catalog_embeddings.pt"
 DATA_PATH  = "data/polyvore_outfits"
-DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.backends.mps.is_available():
+    DEVICE = torch.device("mps")
+elif torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")
 
 val_transform = transforms.Compose([
     transforms.Resize((224, 224)),

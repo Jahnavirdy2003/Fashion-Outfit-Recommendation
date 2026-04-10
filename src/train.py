@@ -5,6 +5,7 @@ Loss: Binary Cross-Entropy (compatible=1, incompatible=0)
 import os
 import torch
 import torch.nn as nn
+import time
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from dataset import PolyvoreDataset
@@ -15,7 +16,13 @@ BATCH_SIZE = 32
 EPOCHS     = 5
 LR         = 1e-4
 SAVE_PATH  = "models/best_model.pt"
-DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.backends.mps.is_available():
+    DEVICE = torch.device("mps")
+elif torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")
+# DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def collate_fn(batch):
@@ -52,8 +59,13 @@ def train():
     )
 
     best_val_loss = float("inf")
-
+    total_batches = len(train_dl) * EPOCHS
+    print(f"\nStarting training: {EPOCHS} epochs * {len(train_dl)} batches = {total_batches} total batches\n")
     for epoch in range(1, EPOCHS + 1):
+        start = time.time()
+        print(f"\n{'='*50}")
+        print(f"EPOCH {epoch}/{EPOCHS}  ({(epoch-1)/EPOCHS*100:.0f}% done)")
+        print(f"{'='*50}")
         # ── Train ────────────────────────────────────────
         model.train()
         train_loss, correct, total = 0.0, 0, 0
@@ -73,6 +85,7 @@ def train():
             optimizer.step()
 
             train_loss += loss.item()
+            tqdm.write(f"  Batch loss: {loss.item():.4f}")
             preds       = (scores > 0.5).float()
             correct    += (preds == labels).sum().item()
             total      += labels.size(0)
@@ -109,7 +122,10 @@ def train():
             best_val_loss = val_loss
             torch.save(model.state_dict(), SAVE_PATH)
             print(f"  ✓ Saved best model → {SAVE_PATH}")
-
+        elapsed = time.time() - start
+        avg_per_epoch = elapsed / epoch
+        remaining = avg_per_epoch * (EPOCHS - epoch)
+        print(f"  Time elapsed: {elapsed:.0f}s | ETA: {remaining:.0f}s")
     print("\nTraining complete!")
 
 
