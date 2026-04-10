@@ -1,10 +1,10 @@
-# 👗 Multimodal Fashion Outfit Recommendation
+# Multimodal Fashion Outfit Recommendation
 
 A multimodal machine learning system that recommends compatible clothing items given a fashion item description. Built using image embeddings (EfficientNet-B0) and text embeddings (Sentence-BERT), fused together to learn fashion compatibility from real outfit data.
 
 ---
 
-## 👥 Team Members
+## Team Members
 
 | Name | Email |
 |------|-------|
@@ -14,7 +14,7 @@ A multimodal machine learning system that recommends compatible clothing items g
 
 ---
 
-## 🎯 Project Overview
+## Project Overview
 
 Given a clothing item (image + text description), this system recommends other items that are **stylistically compatible** — for example:
 
@@ -25,7 +25,7 @@ The system learns compatibility by studying thousands of real outfits curated by
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Query Image + Text Description
@@ -59,7 +59,7 @@ Query Image + Text Description
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Tool | Purpose |
 |------|---------|
@@ -72,7 +72,7 @@ Query Image + Text Description
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Fashion-Outfit-Recommendation/
@@ -104,7 +104,7 @@ Fashion-Outfit-Recommendation/
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 ### 1. Clone the repository
 ```bash
@@ -132,7 +132,7 @@ python -c "from datasets import load_dataset; ds = load_dataset('Marqo/polyvore'
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ### Train the model
 ```bash
@@ -151,7 +151,7 @@ python src/main.py recommend --text "black leather boots" --topk 5
 
 ---
 
-## 📊 Results
+## Results
 
 > Results obtained by training on 500 outfits for 5 epochs on CPU.
 
@@ -175,7 +175,7 @@ Top 5 recommendations for query item:
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 1. **Dataset**: Items sharing the same outfit ID are treated as compatible (positive pairs). Random items from different outfits form incompatible pairs (negative pairs).
 
@@ -191,14 +191,14 @@ Top 5 recommendations for query item:
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 - Trained on a subset of 500 outfits due to CPU constraints — full dataset requires a GPU
 - No category filtering (may recommend same category items)
 - Static catalog — new items require rebuilding embeddings
 - Recommendation quality improves significantly with more training data
 
-## 🔮 Future Improvements
+## Future Improvements
 
 - Train on full dataset using GPU for higher accuracy
 - Add category-aware filtering (e.g., boots → recommend tops/bottoms only)
