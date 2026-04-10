@@ -138,17 +138,25 @@ def get_recommendations(query_img: Image.Image, query_text: str, top_k: int):
 
     sorted_indices = np.argsort(sims)[::-1]
 
-    # Detect query category from text or let user pick
+    # Build a complete outfit - one item per category group
+    outfit_slots = {
+        "tops": None,
+        "bottoms": None, 
+        "shoes": None,
+        "outerwear": None,
+        "bags": None,
+        "jewelry": None,
+        "accessories": None,
+    }
+    # Remove the query's own category group
     query_group = None
     if query_text:
-        # Check if query text matches any known category
         for cat in TOPS + OUTERWEAR + BOTTOMS + DRESSES + SHOES + BAGS + JEWELRY + ACCESSORIES:
             if cat.lower() in query_text.lower():
                 query_group = get_category_group(cat)
                 break
-        # Also check common words
-        qt = query_text.lower()
         if not query_group:
+            qt = query_text.lower()
             if any(w in qt for w in ["shirt", "polo", "tee", "top", "blouse", "sweater"]):
                 query_group = "tops"
             elif any(w in qt for w in ["pant", "jean", "short", "skirt", "legging"]):
@@ -161,22 +169,43 @@ def get_recommendations(query_img: Image.Image, query_text: str, top_k: int):
                 query_group = "outerwear"
             elif any(w in qt for w in ["bag", "clutch", "tote", "backpack"]):
                 query_group = "bags"
+    
+    if query_group and query_group in outfit_slots:
+        del outfit_slots[query_group]
 
     results = []
-    compatible_cats = COMPATIBLE.get(query_group, []) if query_group else []
+    extras = []
 
     for idx in sorted_indices:
         item = metadata[idx]
-        # If we know query group, only show compatible categories
-        if compatible_cats and item["category"] not in compatible_cats:
+        item_group = get_category_group(item["category"])
+        
+        # Skip same category as query
+        if item_group == query_group:
             continue
-        results.append({
+        
+        entry = {
             "item_id": item["item_id"],
             "category": item["category"],
             "text": item["text"],
             "score": float(sims[idx]),
             "catalog_idx": idx,
-        })
+        }
+
+        # Fill outfit slots first (one per category)
+        if item_group in outfit_slots and outfit_slots[item_group] is None:
+            outfit_slots[item_group] = entry
+            results.append(entry)
+        elif len(extras) < top_k:
+            extras.append(entry)
+        
+        # Stop when we have enough
+        if len(results) >= top_k:
+            break
+    
+    # If not enough outfit slots filled, add extras
+    while len(results) < top_k and extras:
+        results.append(extras.pop(0))
         if len(results) >= top_k:
             break
         if len(results) >= top_k:

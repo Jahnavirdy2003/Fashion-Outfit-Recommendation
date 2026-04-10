@@ -66,9 +66,10 @@ Query Image + Text Description
 | PyTorch | Deep learning framework |
 | EfficientNet-B0 | Image feature extraction (pretrained on ImageNet) |
 | Sentence-BERT (all-MiniLM-L6-v2) | Text semantic embeddings |
-| Marqo/Polyvore Dataset | 94,096 fashion items available; 500 outfits used for training (CPU constraint) |
+| Marqo/Polyvore Dataset | 94,096 fashion items available; 5,000–10,000 outfits used for training |
 | scikit-learn | AUC metric computation |
 | HuggingFace Datasets | Dataset loading |
+| Streamlit | Web UI with camera scan + image upload |
 
 ---
 
@@ -84,6 +85,14 @@ Fashion-Outfit-Recommendation/
 │   ├── best_model.pt          # Trained model checkpoint
 │   └── catalog_embeddings.pt  # Pre-computed catalog embeddings
 │
+├── experiments/               # Auto-generated experiment results
+│   ├── exp1_baseline_5k_unfrozen/
+│   ├── exp2_frozen_backbone/
+│   ├── ...                    # Each with config, logs, curves, ROC, scores
+│   ├── comparison.png         # Cross-experiment comparison chart
+│   ├── curves_overlay.png     # Overlaid training curves
+│   └── summary.csv            # Results summary table
+│
 ├── notebooks/
 │   ├── 01_eda.ipynb           # Exploratory Data Analysis (in progress)
 │   └── 02_demo.ipynb          # End-to-end demo (in progress)
@@ -95,9 +104,13 @@ Fashion-Outfit-Recommendation/
 │   ├── train.py               # Training loop
 │   ├── evaluate.py            # Evaluation metrics (AUC + Accuracy)
 │   ├── recommend.py           # Inference + recommendations
+│   ├── experiment.py          # Experiment runner with auto insight generation
+│   ├── app.py                 # Streamlit web app (camera scan + upload)
 │   └── main.py                # CLI entry point
 │
+├── run_all_experiments.sh     # Batch runner for all experiments
 ├── requirements.txt
+├── CHANGELOG.md               # Full development history
 ├── .gitignore
 └── README.md
 ```
@@ -144,16 +157,34 @@ python src/main.py train
 python src/main.py evaluate
 ```
 
-### Get recommendations
+### Get recommendations (CLI)
 ```bash
 python src/main.py recommend --text "black leather boots" --topk 5
+```
+
+### Launch web app (camera scan + image upload)
+```bash
+streamlit run src/app.py
+```
+Opens at `http://localhost:8501`. Access from your phone on the same WiFi using the Network URL for live camera scanning.
+
+### Run hyperparameter experiments
+```bash
+# Run a single experiment
+python src/experiment.py --name my_exp --outfits 5000 --epochs 5 --lr 1e-4
+
+# Run all 6 predefined experiments
+./run_all_experiments.sh
+
+# Compare results across all experiments
+python src/experiment.py --compare
 ```
 
 ---
 
 ## Results
 
-> Results obtained by training on 500 outfits for 5 epochs on CPU.
+> Results obtained by training on 5,000 outfits for 5 epochs on Apple M4 Max (MPS).
 
 | Metric | Random Baseline | Our Model |
 |--------|----------------|-----------|
@@ -161,6 +192,20 @@ python src/main.py recommend --text "black leather boots" --topk 5
 | AUC | 0.5000 | **0.7632** |
 
 The model is **19.75% more accurate** than random guessing at predicting fashion compatibility.
+
+### Hyperparameter Experiments
+We ran 6 experiments to systematically evaluate design choices:
+
+| Experiment | Outfits | Backbone | LR | Dropout | What it tests |
+|---|---|---|---|---|---|
+| Baseline | 5,000 | Unfrozen | 1e-4 | 0.3 | Starting point |
+| Frozen backbone | 5,000 | Frozen | 1e-4 | 0.3 | Does freezing reduce overfitting? |
+| More data | 10,000 | Unfrozen | 1e-4 | 0.3 | Does more data help? |
+| Lower LR | 5,000 | Unfrozen | 1e-5 | 0.3 | Does gentler fine-tuning help? |
+| High dropout | 5,000 | Unfrozen | 1e-4 | 0.5 | Does stronger regularization help? |
+| Best combo | 10,000 | Frozen | 1e-5 | 0.3 | Combining best findings |
+
+Full results with training curves, ROC curves, and score distributions are in the `experiments/` folder.
 
 ### Sample Output
 ```
@@ -193,15 +238,16 @@ Top 5 recommendations for query item:
 
 ## Limitations
 
-- Trained on a subset of 500 outfits due to CPU constraints — full dataset requires a GPU
 - No category filtering (may recommend same category items)
 - Static catalog — new items require rebuilding embeddings
 - Recommendation quality improves significantly with more training data
+- Web app image lookup is sequential (could be optimized with index)
 
 ## Future Improvements
 
 - Train on full dataset using GPU for higher accuracy
 - Add category-aware filtering (e.g., boots → recommend tops/bottoms only)
-- Build a Streamlit web interface for interactive demos
 - Fine-tune the text encoder for fashion-specific language
 - Hard negative mining for better compatibility learning
+- Deploy Streamlit app to cloud for public access
+- Add user preference personalization

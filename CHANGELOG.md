@@ -82,6 +82,58 @@ Use this for git commit messages and project documentation.
 
 ---
 
+## Phase 3: Experiment Runner Improvements
+
+### src/experiment.py — BUG FIX
+- **Fixed ValueError on line 240** — old code tried to read CSV as raw text lines, crashed with `could not convert string to float`
+- Replaced with clean pandas `pd.read_csv()` approach for best epoch calculation
+- **Commit message:** `fix(experiment): fix best_epoch CSV parsing crash`
+
+### run_all_experiments.sh — UPDATED
+- **Added sanity check** — runs a quick 100-outfit, 1-epoch test before starting real experiments
+- If sanity check fails, script exits immediately instead of wasting hours
+- **Added auto-backup** — zips existing experiments to `experiments/backups/backup_YYYYMMDD_HHMMSS.zip` before clearing
+- Backups exclude previous backup zips to avoid nesting
+- Old experiment folders are cleaned but `backups/` is preserved
+
+### .gitignore — UPDATED
+- Added `experiments/backups/` to prevent large zip files from being committed
+
+---
+
+## Phase 4: Web App + Documentation
+
+### src/app.py — NEW FILE
+- **Streamlit web application** for interactive fashion recommendations
+- **Two input methods:** image upload from gallery + live camera scan
+- Camera scan works on mobile browsers (phone accesses laptop server via WiFi)
+- Displays top-K recommendations with item images, category, description, and compatibility scores
+- Adjustable number of recommendations (3-10) via sidebar slider
+- Optional text description input for improved results
+- Sidebar shows model info, device, and "How it works" guide
+- Team credits in footer
+- Uses `@st.cache_resource` for efficient model/catalog loading
+- **Tested on:** MacBook (laptop browser) + iPhone (mobile browser via same WiFi)
+- **Commit message:** `feat: add Streamlit web app with camera scan and mobile support`
+
+### requirements.txt — UPDATED
+- Added `streamlit>=1.30.0`
+
+### README.md — UPDATED
+- Updated tech stack to include Streamlit
+- Updated project structure with new files (experiment.py, app.py, experiments/, CHANGELOG.md)
+- Added web app usage instructions with mobile camera scanning
+- Added hyperparameter experiment commands
+- Added experiment results table (6 experiments)
+- Updated results from "500 outfits on CPU" to "5,000 outfits on M4 Max MPS"
+- Removed "Build Streamlit web interface" from Future Improvements (completed!)
+- Updated limitations
+
+### CHANGELOG.md — UPDATED
+- Added Phase 3 (experiment fixes) and Phase 4 (web app + docs) sections
+
+---
+
 ## Git Commit Sequence (recommended order)
 
 ```bash
@@ -118,21 +170,3 @@ git commit -m "results: add outputs from 6 hyperparameter tuning experiments"
 Previous single-run results (before experiment system):
 - Accuracy: 69.75% (70.19% at best epoch)
 - AUC: 0.7632 (0.7517 on re-eval)
----
-## Phase 3: Experiment Runner Improvements
-
-### src/experiment.py — BUG FIX
-- **Fixed ValueError on line 240** — old code tried to read CSV as raw text lines (`open().readlines()`), crashed with `could not convert string to float`
-- Replaced with clean pandas `pd.read_csv()` approach for best epoch calculation
-- **Commit message:** `fix(experiment): fix best_epoch CSV parsing crash after training`
-
-### run_all_experiments.sh — UPDATED
-- **Added sanity check** — runs a quick 100-outfit, 1-epoch test before starting real experiments
-- If sanity check fails, script exits immediately instead of wasting hours
-- **Added auto-backup** — zips existing experiments to `experiments/backups/backup_YYYYMMDD_HHMMSS.zip` before clearing
-- Backups exclude previous backup zips to avoid nesting
-- Old experiment folders are cleaned but `backups/` is preserved
-- **Commit message:** `feat: add sanity check, auto-backup, and backup directory to experiment runner`
-
-### .gitignore — UPDATED
-- Added `experiments/backups/` to prevent large zip files from being committed

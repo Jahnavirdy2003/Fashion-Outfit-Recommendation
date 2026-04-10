@@ -30,7 +30,7 @@ def run_recommend(text, top_k):
     if not Path(EMB_CACHE).exists():
         print("Catalog not found — building it first...")
         model = load_model()
-        build_catalog(model, max_items=500)
+        build_catalog(model, max_items=5000)
 
     # Use a sample image from the dataset as query
     from datasets import load_from_disk
