@@ -66,7 +66,7 @@ Query Image + Text Description
 | PyTorch | Deep learning framework |
 | EfficientNet-B0 | Image feature extraction (pretrained on ImageNet) |
 | Sentence-BERT (all-MiniLM-L6-v2) | Text semantic embeddings |
-| Marqo/Polyvore Dataset | 94,096 fashion items with images + descriptions |
+| Marqo/Polyvore Dataset | 94,096 fashion items available; 500 outfits used for training (CPU constraint) |
 | scikit-learn | AUC metric computation |
 | HuggingFace Datasets | Dataset loading |
 
