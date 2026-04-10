@@ -1,10 +1,10 @@
-# Multimodal Fashion Outfit Recommendation
+# 👗 Multimodal Fashion Outfit Recommendation
 
-A multimodal machine learning system that recommends compatible clothing items given a fashion item image and text description. Built using image embeddings (EfficientNet-B0) and text embeddings (Sentence-BERT), fused together to learn fashion compatibility from real outfit data.
+A multimodal machine learning system that recommends compatible clothing items given a fashion item description. Built using image embeddings (EfficientNet-B0) and text embeddings (Sentence-BERT), fused together to learn fashion compatibility from real outfit data.
 
 ---
 
-## Team Members
+## 👥 Team Members
 
 | Name | Email |
 |------|-------|
@@ -14,7 +14,7 @@ A multimodal machine learning system that recommends compatible clothing items g
 
 ---
 
-## Project Overview
+## 🎯 Project Overview
 
 Given a clothing item (image + text description), this system recommends other items that are **stylistically compatible** — for example:
 
@@ -25,7 +25,7 @@ The system learns compatibility by studying thousands of real outfits curated by
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 Query Image + Text Description
@@ -59,7 +59,7 @@ Query Image + Text Description
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Tool | Purpose |
 |------|---------|
@@ -72,28 +72,28 @@ Query Image + Text Description
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 Fashion-Outfit-Recommendation/
 │
 ├── data/
-│   └── polyvore_outfits/      # Dataset (downloaded separately)
+│   └── polyvore_outfits/      # Dataset (downloaded via setup instructions)
 │
 ├── models/
 │   ├── best_model.pt          # Trained model checkpoint
 │   └── catalog_embeddings.pt  # Pre-computed catalog embeddings
 │
 ├── notebooks/
-│   ├── 01_eda.ipynb           # Exploratory Data Analysis
-│   └── 02_demo.ipynb          # End-to-end demo
+│   ├── 01_eda.ipynb           # Exploratory Data Analysis (in progress)
+│   └── 02_demo.ipynb          # End-to-end demo (in progress)
 │
 ├── src/
 │   ├── dataset.py             # Dataset loading + compatibility pairs
 │   ├── encoders.py            # Image + Text encoders
 │   ├── model.py               # Fusion + compatibility model
 │   ├── train.py               # Training loop
-│   ├── evaluate.py            # Evaluation metrics
+│   ├── evaluate.py            # Evaluation metrics (AUC + Accuracy)
 │   ├── recommend.py           # Inference + recommendations
 │   └── main.py                # CLI entry point
 │
@@ -104,7 +104,7 @@ Fashion-Outfit-Recommendation/
 
 ---
 
-## Setup Instructions
+## ⚙️ Setup Instructions
 
 ### 1. Clone the repository
 ```bash
@@ -128,10 +128,11 @@ pip install -r requirements.txt
 ```bash
 python -c "from datasets import load_dataset; ds = load_dataset('Marqo/polyvore'); ds.save_to_disk('data/polyvore_outfits'); print('Done!')"
 ```
+> Note: The full dataset contains 94,096 items. We train on a subset of 500 outfits due to CPU constraints. A GPU is recommended for full dataset training.
 
 ---
 
-## Usage
+## 🚀 Usage
 
 ### Train the model
 ```bash
@@ -150,7 +151,9 @@ python src/main.py recommend --text "black leather boots" --topk 5
 
 ---
 
-## Results
+## 📊 Results
+
+> Results obtained by training on 500 outfits for 5 epochs on CPU.
 
 | Metric | Random Baseline | Our Model |
 |--------|----------------|-----------|
@@ -161,7 +164,7 @@ The model is **19.75% more accurate** than random guessing at predicting fashion
 
 ### Sample Output
 ```
-Top 5 recommendations for: 'black leather boots'
+Top 5 recommendations for query item:
 ──────────────────────────────────────────────────
   1. [0.621] Day Dresses — tibi knit long sleeve dress
   2. [0.560] Day Dresses — oasis faux leather trim shift dress
@@ -172,7 +175,7 @@ Top 5 recommendations for: 'black leather boots'
 
 ---
 
-## How It Works
+## 🧠 How It Works
 
 1. **Dataset**: Items sharing the same outfit ID are treated as compatible (positive pairs). Random items from different outfits form incompatible pairs (negative pairs).
 
@@ -188,15 +191,17 @@ Top 5 recommendations for: 'black leather boots'
 
 ---
 
-## Limitations
+## ⚠️ Limitations
 
-- Trained on a subset of 500 outfits due to CPU constraints
+- Trained on a subset of 500 outfits due to CPU constraints — full dataset requires a GPU
 - No category filtering (may recommend same category items)
 - Static catalog — new items require rebuilding embeddings
+- Recommendation quality improves significantly with more training data
 
-## Future Improvements
+## 🔮 Future Improvements
 
 - Train on full dataset using GPU for higher accuracy
 - Add category-aware filtering (e.g., boots → recommend tops/bottoms only)
 - Build a Streamlit web interface for interactive demos
 - Fine-tune the text encoder for fashion-specific language
+- Hard negative mining for better compatibility learning
