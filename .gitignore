@@ -10,3 +10,4 @@ data/sample_query.jpg
 src/dataset_old.py
 src/model_old.py
 experiments/
+experiments/backups/

@@ -1,4 +1,26 @@
 #!/bin/bash
+
+# Backup any existing experiments before starting fresh
+if [ -d "experiments" ] && [ "$(ls -A experiments 2>/dev/null)" ]; then
+    mkdir -p experiments/backups
+    backup_name="experiments/backups/backup_$(date +%Y%m%d_%H%M%S).zip"
+    echo "Backing up existing experiments to $backup_name..."
+    zip -r "$backup_name" experiments/ -x "experiments/backups/*"
+    echo "Backup saved! Clearing old experiments (keeping backups)..."
+    # Remove everything except backups folder
+    find experiments -maxdepth 1 -mindepth 1 ! -name "backups" -exec rm -rf {} +
+fi
+echo "Running sanity check first..."
+python src/experiment.py --name sanity_check --outfits 100 --epochs 1 --lr 1e-4
+
+if [ $? -ne 0 ]; then
+    echo "SANITY CHECK FAILED! Fix errors before running full experiments."
+    exit 1
+fi
+
+echo "Sanity check passed! Cleaning up..."
+rm -rf experiments/sanity_check/
+
 echo "Starting all experiments..."
 echo "=========================="
 
