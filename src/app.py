@@ -100,7 +100,7 @@ def detect_group_from_text(text: str) -> str:
 @st.cache_resource
 def load_model():
     model = FashionCompatibilityModel().to(DEVICE)
-    model.load_state_dict(torch.load(CKPT_PATH, map_location=DEVICE))
+    model.load_state_dict(torch.load(CKPT_PATH, map_location=DEVICE), strict=False)
     model.eval()
     return model
 
@@ -115,13 +115,16 @@ def load_catalog():
 
 @st.cache_resource
 def load_dataset_images():
-    return load_from_disk(DATA_PATH)["data"]
+    ds = load_from_disk(DATA_PATH)["data"]
+    # Build a lookup dict: item_ID → index for fast access
+    lookup = {ds[i]["item_ID"]: i for i in range(len(ds))}
+    return ds, lookup
 
 def get_item_image(item_id: str):
-    ds = load_dataset_images()
-    for i in range(len(ds)):
-        if ds[i]["item_ID"] == item_id:
-            return ds[i]["image"].convert("RGB")
+    ds, lookup = load_dataset_images()
+    idx = lookup.get(item_id)
+    if idx is not None:
+        return ds[idx]["image"].convert("RGB")
     return None
 
 def detect_category(query_img, model, embeddings, metadata):
