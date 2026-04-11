@@ -98,18 +98,22 @@ def recommend(query_img_path: str, query_text: str = "",
     # Score using the trained compatibility head (what the model actually learned)
     cat_matrix = torch.stack(embeddings).to(DEVICE)  # (N, 256)
     query_exp = query_emb.to(DEVICE).unsqueeze(0).expand(cat_matrix.size(0), -1)  # (N, 256)
-    
-    # Process in batches to avoid memory issues
-    batch_size = 256
-    all_scores = []
-    with torch.no_grad():
-        for i in range(0, len(cat_matrix), batch_size):
-            batch_cat = cat_matrix[i:i+batch_size]
-            batch_query = query_exp[i:i+batch_size]
-            diff = torch.abs(batch_query - batch_cat)
-            scores = model.compat_head(diff).squeeze(1)
-            all_scores.append(scores.cpu())
-    sims = torch.cat(all_scores).numpy()
+    # Cosine similarity for recommendations (more reliable than compat head)
+    cat_matrix = torch.stack(embeddings)
+    q_norm = query_emb / (query_emb.norm() + 1e-8)
+    c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
+    sims = (c_norm @ q_norm).numpy()
+    # # Process in batches to avoid memory issues
+    # batch_size = 256
+    # all_scores = []
+    # with torch.no_grad():
+    #     for i in range(0, len(cat_matrix), batch_size):
+    #         batch_cat = cat_matrix[i:i+batch_size]
+    #         batch_query = query_exp[i:i+batch_size]
+    #         diff = torch.abs(batch_query - batch_cat)
+    #         scores = model.compat_head(diff).squeeze(1)
+    #         all_scores.append(scores.cpu())
+    # sims = torch.cat(all_scores).numpy()
 
     top_indices = np.argsort(sims)[::-1][:top_k]
 
