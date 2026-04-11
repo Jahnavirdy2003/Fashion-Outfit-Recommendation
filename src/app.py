@@ -1,6 +1,7 @@
 """
 Fashion Outfit Recommendation — Web App
-Allows users to upload or scan a clothing item and get compatible recommendations.
+Allows users to upload, scan, or describe a clothing item
+and get a complete compatible outfit recommendation.
 
 Usage:
   streamlit run src/app.py
@@ -12,8 +13,6 @@ from PIL import Image
 from pathlib import Path
 from torchvision import transforms
 from datasets import load_from_disk
-
-# Must import from src directory
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
 from model import FashionCompatibilityModel
@@ -37,63 +36,67 @@ val_transform = transforms.Compose([
                          [0.229, 0.224, 0.225]),
 ])
 
-# Map dataset categories to groups
-TOPS = ["Tops", "Blouses", "T-Shirts", "Tank Tops", "Sweaters", "Sweatshirts"]
-OUTERWEAR = ["Jackets", "Coats"]
-BOTTOMS = ["Pants", "Skinny Jeans", "Shorts", "Knee Length Skirts", "Leggings"]
-DRESSES = ["Day Dresses", "Cocktail Dresses", "Maxi Dresses"]
-SHOES = ["Sandals", "Pumps", "Ankle Booties", "Sneakers", "Boots", "Flats"]
-BAGS = ["Shoulder Bags", "Clutches", "Handbags", "Tote Bags", "Backpacks"]
-JEWELRY = ["Earrings", "Necklaces", "Bracelets & Bangles", "Rings"]
+# ── Category definitions ─────────────────────────────────
+TOPS        = ["Tops", "Blouses", "T-Shirts", "Tank Tops", "Sweaters", "Sweatshirts"]
+OUTERWEAR   = ["Jackets", "Coats"]
+BOTTOMS     = ["Pants", "Skinny Jeans", "Shorts", "Knee Length Skirts", "Leggings"]
+DRESSES     = ["Day Dresses", "Cocktail Dresses", "Maxi Dresses"]
+SHOES       = ["Sandals", "Pumps", "Ankle Booties", "Sneakers", "Boots", "Flats"]
+BAGS        = ["Shoulder Bags", "Clutches", "Handbags", "Tote Bags", "Backpacks"]
+JEWELRY     = ["Earrings", "Necklaces", "Bracelets & Bangles", "Rings"]
 ACCESSORIES = ["Sunglasses", "Hats", "Watches", "Belts", "Scarves"]
 
-# What to recommend for each group
 COMPATIBLE = {
-    "tops":       BOTTOMS + SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
-    "outerwear":  TOPS + BOTTOMS + SHOES + BAGS + DRESSES,
-    "bottoms":    TOPS + SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
-    "dresses":    SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
-    "shoes":      TOPS + BOTTOMS + DRESSES + BAGS,
-    "bags":       TOPS + BOTTOMS + DRESSES + SHOES + OUTERWEAR,
-    "jewelry":    TOPS + BOTTOMS + DRESSES,
+    "tops":        BOTTOMS + SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
+    "outerwear":   TOPS + BOTTOMS + SHOES + BAGS + DRESSES,
+    "bottoms":     TOPS + SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
+    "dresses":     SHOES + BAGS + OUTERWEAR + JEWELRY + ACCESSORIES,
+    "shoes":       TOPS + BOTTOMS + DRESSES + BAGS,
+    "bags":        TOPS + BOTTOMS + DRESSES + SHOES + OUTERWEAR,
+    "jewelry":     TOPS + BOTTOMS + DRESSES,
     "accessories": TOPS + BOTTOMS + DRESSES + SHOES,
 }
 
+OUTFIT_SLOTS = {
+    "tops":        "👕 Top",
+    "bottoms":     "👖 Bottom",
+    "shoes":       "👟 Shoes",
+    "outerwear":   "🧥 Outerwear",
+    "bags":        "👜 Bag",
+    "jewelry":     "💍 Jewelry",
+    "accessories": "🕶️ Accessory",
+}
+
 def get_category_group(category: str) -> str:
-    if category in TOPS: return "tops"
-    if category in OUTERWEAR: return "outerwear"
-    if category in BOTTOMS: return "bottoms"
-    if category in DRESSES: return "dresses"
-    if category in SHOES: return "shoes"
-    if category in BAGS: return "bags"
-    if category in JEWELRY: return "jewelry"
+    if category in TOPS:        return "tops"
+    if category in OUTERWEAR:   return "outerwear"
+    if category in BOTTOMS:     return "bottoms"
+    if category in DRESSES:     return "dresses"
+    if category in SHOES:       return "shoes"
+    if category in BAGS:        return "bags"
+    if category in JEWELRY:     return "jewelry"
     if category in ACCESSORIES: return "accessories"
     return "unknown"
 
-def detect_category(query_img: Image.Image, model, embeddings, metadata):
-    """Auto-detect the query item's category by finding most similar catalog items."""
-    img_t = val_transform(query_img).unsqueeze(0).to(DEVICE)
-    with torch.no_grad():
-        query_emb = model.encode_item(img_t, ["fashion item"], DEVICE).squeeze(0).cpu()
-    
-    cat_matrix = torch.stack(embeddings)
-    q_norm = query_emb / (query_emb.norm() + 1e-8)
-    c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
-    sims = (c_norm @ q_norm).numpy()
-    
-    top_indices = np.argsort(sims)[::-1][:10]
-    categories = [metadata[idx]["category"] for idx in top_indices]
-    
-    from collections import Counter
-    counts = Counter(categories).most_common()
-    # Skip "Clothing" since it's too generic
-    for cat, count in counts:
-        if cat != "Clothing":
-            return cat
-    return counts[0][0]
+def detect_group_from_text(text: str) -> str:
+    t = text.lower()
+    if any(w in t for w in ["shirt", "polo", "tee", "top", "blouse", "sweater", "sweatshirt"]):
+        return "tops"
+    if any(w in t for w in ["pant", "jean", "short", "skirt", "legging"]):
+        return "bottoms"
+    if any(w in t for w in ["dress"]):
+        return "dresses"
+    if any(w in t for w in ["shoe", "boot", "sandal", "sneaker", "pump", "heel", "flat"]):
+        return "shoes"
+    if any(w in t for w in ["jacket", "coat"]):
+        return "outerwear"
+    if any(w in t for w in ["bag", "clutch", "tote", "backpack", "handbag"]):
+        return "bags"
+    if any(w in t for w in ["earring", "necklace", "bracelet", "ring"]):
+        return "jewelry"
+    return "unknown"
 
-
-# ── Load model + catalog (cached so it only runs once) ──
+# ── Cached resources ─────────────────────────────────────
 @st.cache_resource
 def load_model():
     model = FashionCompatibilityModel().to(DEVICE)
@@ -101,171 +104,120 @@ def load_model():
     model.eval()
     return model
 
-
 @st.cache_resource
 def load_catalog():
     if Path(EMB_CACHE).exists():
         cache = torch.load(EMB_CACHE, map_location="cpu")
         return cache["embeddings"], cache["metadata"]
     else:
-        st.error("Catalog embeddings not found! Run `python src/recommend.py` first to build them.")
+        st.error("Catalog embeddings not found! Run `python src/recommend.py` first.")
         st.stop()
-
 
 @st.cache_resource
 def load_dataset_images():
-    ds = load_from_disk(DATA_PATH)["data"]
-    return ds
-
-
-# ── Recommendation logic ────────────────────────────────
-def get_recommendations(query_img: Image.Image, query_text: str, top_k: int):
-    model = load_model()
-    embeddings, metadata = load_catalog()
-
-    # Embed query
-    img_t = val_transform(query_img).unsqueeze(0).to(DEVICE)
-    text = query_text if query_text else "fashion item"
-
-    with torch.no_grad():
-        query_emb = model.encode_item(img_t, [text], DEVICE).squeeze(0).cpu()
-
-    # Cosine similarity
-    cat_matrix = torch.stack(embeddings)
-    q_norm = query_emb / (query_emb.norm() + 1e-8)
-    c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
-    sims = (c_norm @ q_norm).numpy()
-
-    sorted_indices = np.argsort(sims)[::-1]
-
-    # Build a complete outfit - one item per category group
-    outfit_slots = {
-        "tops": None,
-        "bottoms": None, 
-        "shoes": None,
-        "outerwear": None,
-        "bags": None,
-        "jewelry": None,
-        "accessories": None,
-    }
-    # Remove the query's own category group
-    query_group = None
-    if query_text:
-        for cat in TOPS + OUTERWEAR + BOTTOMS + DRESSES + SHOES + BAGS + JEWELRY + ACCESSORIES:
-            if cat.lower() in query_text.lower():
-                query_group = get_category_group(cat)
-                break
-        if not query_group:
-            qt = query_text.lower()
-            if any(w in qt for w in ["shirt", "polo", "tee", "top", "blouse", "sweater"]):
-                query_group = "tops"
-            elif any(w in qt for w in ["pant", "jean", "short", "skirt", "legging"]):
-                query_group = "bottoms"
-            elif any(w in qt for w in ["dress"]):
-                query_group = "dresses"
-            elif any(w in qt for w in ["shoe", "boot", "sandal", "sneaker", "pump", "heel"]):
-                query_group = "shoes"
-            elif any(w in qt for w in ["jacket", "coat"]):
-                query_group = "outerwear"
-            elif any(w in qt for w in ["bag", "clutch", "tote", "backpack"]):
-                query_group = "bags"
-    
-    if query_group and query_group in outfit_slots:
-        del outfit_slots[query_group]
-
-    results = []
-    extras = []
-
-    for idx in sorted_indices:
-        item = metadata[idx]
-        item_group = get_category_group(item["category"])
-        
-        # Skip same category as query
-        if item_group == query_group:
-            continue
-        
-        entry = {
-            "item_id": item["item_id"],
-            "category": item["category"],
-            "text": item["text"],
-            "score": float(sims[idx]),
-            "catalog_idx": idx,
-        }
-
-        # Fill outfit slots first (one per category)
-        if item_group in outfit_slots and outfit_slots[item_group] is None:
-            outfit_slots[item_group] = entry
-            results.append(entry)
-        elif len(extras) < top_k:
-            extras.append(entry)
-        
-        # Stop when we have enough
-        if len(results) >= top_k:
-            break
-    
-    # If not enough outfit slots filled, add extras
-    while len(results) < top_k and extras:
-        results.append(extras.pop(0))
-        if len(results) >= top_k:
-            break
-        if len(results) >= top_k:
-            break
-    return results
-
+    return load_from_disk(DATA_PATH)["data"]
 
 def get_item_image(item_id: str):
-    """Load image for a catalog item from the dataset."""
     ds = load_dataset_images()
-    # Find the item by ID
     for i in range(len(ds)):
         if ds[i]["item_ID"] == item_id:
             return ds[i]["image"].convert("RGB")
     return None
 
+def detect_category(query_img, model, embeddings, metadata):
+    img_t = val_transform(query_img).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        emb = model.encode_item(img_t, ["fashion item"], DEVICE).squeeze(0).cpu()
+    cat_matrix = torch.stack(embeddings)
+    q_norm = emb / (emb.norm() + 1e-8)
+    c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
+    sims = (c_norm @ q_norm).numpy()
+    top_indices = np.argsort(sims)[::-1][:10]
+    from collections import Counter
+    counts = Counter([metadata[i]["category"] for i in top_indices]).most_common()
+    for cat, _ in counts:
+        if cat != "Clothing":
+            return cat
+    return counts[0][0]
 
-# ── Streamlit UI ────────────────────────────────────────
-st.set_page_config(
-    page_title="Fashion Outfit Recommender",
-    page_icon="👗",
-    layout="wide"
-)
+# ── Core outfit builder ───────────────────────────────────
+def build_outfit(query_emb, query_group, embeddings, metadata, top_k):
+    """Returns one best item per outfit slot, filtered by compatibility."""
+    compatible_cats = COMPATIBLE.get(query_group, [])
+    cat_matrix = torch.stack(embeddings)
+    q_norm = query_emb / (query_emb.norm() + 1e-8)
+    c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
+    sims = (c_norm @ q_norm).numpy()
+    sorted_indices = np.argsort(sims)[::-1]
 
+    slots = {k: None for k in OUTFIT_SLOTS if k != query_group}
+
+    for idx in sorted_indices:
+        item = metadata[idx]
+        group = get_category_group(item["category"])
+        if group in slots and slots[group] is None:
+            if query_group == "unknown" or item["category"] in compatible_cats:
+                slots[group] = {
+                    "item_id":  item["item_id"],
+                    "category": item["category"],
+                    "text":     item["text"],
+                    "score":    float(sims[idx]),
+                }
+        if all(v is not None for v in slots.values()):
+            break
+    return slots
+
+def show_outfit(slots):
+    """Render the outfit grid with images, category, description and score."""
+    filled = [(k, v) for k, v in slots.items() if v is not None]
+    cols = st.columns(min(len(filled), 4))
+    for i, (group, item) in enumerate(filled):
+        with cols[i % 4]:
+            st.markdown(f"**{OUTFIT_SLOTS[group]}**")
+            img = get_item_image(item["item_id"])
+            if img:
+                st.image(img, use_container_width=True)
+            else:
+                st.markdown("🖼️ *No image*")
+            st.markdown(f"**{item['category']}**")
+            st.caption(item["text"][:55] + "..." if len(item["text"]) > 55 else item["text"])
+            st.progress(max(0.0, min(1.0, item["score"])))
+            st.markdown(f"Score: `{item['score']:.3f}`")
+
+# ── Page layout ───────────────────────────────────────────
+st.set_page_config(page_title="Fashion Outfit Recommender", page_icon="👗", layout="wide")
 st.title("👗 Fashion Outfit Recommender")
-st.markdown("Upload a clothing item or scan one with your camera to get compatible outfit recommendations!")
+st.markdown("Upload a clothing item, scan with your camera, or describe it — and we'll build a complete outfit!")
 
-# Sidebar settings
 with st.sidebar:
     st.header("Settings")
     top_k = st.slider("Number of recommendations", 3, 10, 5)
-    query_text = st.text_input(
-        "Item description (helps filter results)",
-        placeholder="e.g., polo shirt, blue denim jacket, summer dress"
-    )
     st.markdown("---")
     st.markdown("### How it works")
     st.markdown(
-        "1. Upload or scan a clothing item\n"
-        "2. The model encodes it using EfficientNet + SBERT\n"
-        "3. Compares against catalog items via cosine similarity\n"
-        "4. Returns the most compatible items"
+        "1. Upload, scan, or describe a clothing item\n"
+        "2. Model encodes it using EfficientNet + SBERT\n"
+        "3. Compares against catalog via cosine similarity\n"
+        "4. Builds a complete compatible outfit"
     )
     st.markdown("---")
-    st.markdown(
-        "**Model:** EfficientNet-B0 + Sentence-BERT\n\n"
-        "**Dataset:** Polyvore Outfits\n\n"
-        f"**Device:** `{DEVICE}`"
-    )
+    st.markdown(f"**Model:** EfficientNet-B0 + Sentence-BERT\n\n**Device:** `{DEVICE}`")
 
-# Input methods
-tab_upload, tab_camera = st.tabs(["📁 Upload image", "📸 Camera scan"])
+# ── Tabs ──────────────────────────────────────────────────
+tab_upload, tab_camera, tab_text = st.tabs(["📁 Upload image", "📷 Camera scan", "🔍 Text search"])
 
 query_image = None
+sidebar_text = ""
 
 with tab_upload:
     uploaded_file = st.file_uploader(
         "Choose a clothing image",
-        type=["jpg", "jpeg", "png", "webp"],
-        help="Upload a photo of a clothing item"
+        type=["jpg", "jpeg", "png", "webp"]
+    )
+    sidebar_text = st.text_input(
+        "Item description (optional — helps filtering)",
+        placeholder="e.g., blue denim jacket, floral dress",
+        key="upload_text"
     )
     if uploaded_file:
         query_image = Image.open(uploaded_file).convert("RGB")
@@ -275,74 +227,101 @@ with tab_camera:
     if camera_photo:
         query_image = Image.open(camera_photo).convert("RGB")
 
-# Process and show recommendations
+with tab_text:
+    st.markdown("### 👗 Build Your Outfit")
+    st.markdown("Describe a clothing item and we'll build a complete outfit around it!")
+    text_query = st.text_input(
+        "Describe your item",
+        placeholder="e.g., wide leg blue jeans, black leather boots, floral summer dress"
+    )
+    search_clicked = st.button("✨ Build Outfit", type="primary")
+
+    if search_clicked and text_query:
+        with st.spinner("Building your outfit..."):
+            model      = load_model()
+            embeddings, metadata = load_catalog()
+            query_group = detect_group_from_text(text_query)
+
+            # Find best matching catalog image for the text
+            with torch.no_grad():
+                text_emb = model.text_encoder([text_query], DEVICE).squeeze(0).cpu()
+            cat_matrix = torch.stack(embeddings)
+            t_norm = text_emb / (text_emb.norm() + 1e-8)
+            c_norm = cat_matrix / (cat_matrix.norm(dim=1, keepdim=True) + 1e-8)
+            text_sims  = (c_norm @ t_norm).numpy()
+            best_idx   = int(np.argmax(text_sims))
+            best_img   = get_item_image(metadata[best_idx]["item_id"])
+
+            # Full multimodal embedding
+            use_img = best_img if best_img else Image.new("RGB", (224, 224), (255, 255, 255))
+            img_t   = val_transform(use_img).unsqueeze(0).to(DEVICE)
+            with torch.no_grad():
+                query_emb = model.encode_item(img_t, [text_query], DEVICE).squeeze(0).cpu()
+
+            slots = build_outfit(query_emb, query_group, embeddings, metadata, top_k)
+
+        st.markdown("---")
+        st.markdown(f"## ✨ Complete Outfit for: *{text_query}*")
+
+        # Show detected query item
+        st.markdown("### Your Item")
+        q_col, _ = st.columns([1, 4])
+        with q_col:
+            if best_img:
+                st.image(best_img, use_container_width=True)
+            st.markdown(f"**{metadata[best_idx]['category']}**")
+            st.caption(text_query)
+            if query_group != "unknown":
+                st.caption(f"Detected: **{query_group}**")
+
+        st.markdown("### Complete the Look")
+        show_outfit(slots)
+
+    elif search_clicked and not text_query:
+        st.warning("Please enter a description first!")
+
+# ── Image-based recommendations (upload + camera) ────────
 if query_image:
     st.markdown("---")
+    with st.spinner("Building your outfit..."):
+        model      = load_model()
+        embeddings, metadata = load_catalog()
+
+        # Detect category
+        if sidebar_text:
+            query_group = detect_group_from_text(sidebar_text)
+            label = sidebar_text
+        else:
+            detected    = detect_category(query_image, model, embeddings, metadata)
+            query_group = get_category_group(detected)
+            label       = detected
+
+        # Embed query image
+        img_t = val_transform(query_image).unsqueeze(0).to(DEVICE)
+        text  = sidebar_text if sidebar_text else label
+        with torch.no_grad():
+            query_emb = model.encode_item(img_t, [text], DEVICE).squeeze(0).cpu()
+
+        slots = build_outfit(query_emb, query_group, embeddings, metadata, top_k)
 
     col_query, col_results = st.columns([1, 3])
-
     with col_query:
         st.subheader("Your item")
         st.image(query_image, use_container_width=True)
-        
-        # Auto-detect category if no text provided
-        if not query_text:
-            model = load_model()
-            embeddings, metadata = load_catalog()
-            detected = detect_category(query_image, model, embeddings, metadata)
-            detected_group = get_category_group(detected)
-            query_text = detected  # Use detected category for filtering
-            st.caption(f"Detected category: **{detected}** ({detected_group})")
-        else:
-            st.caption(f"Description: *{query_text}*")
+        st.caption(f"Category: **{query_group}**")
+        if sidebar_text:
+            st.caption(f"Description: *{sidebar_text}*")
 
     with col_results:
-        st.subheader(f"Top {top_k} compatible items")
-
-        with st.spinner("Finding compatible items..."):
-            results = get_recommendations(query_image, query_text, top_k)
-
-        # Display in a grid
-        cols = st.columns(min(top_k, 5))
-        for i, item in enumerate(results):
-            with cols[i % 5]:
-                # Try to load the actual image
-                item_img = get_item_image(item["item_id"])
-                if item_img:
-                    st.image(item_img, use_container_width=True)
-                else:
-                    st.markdown("🖼️ *Image not available*")
-
-                # Score as progress bar
-                st.progress(max(0.0, min(1.0, item["score"])))
-
-                st.markdown(f"**{item['category']}**")
-                st.caption(item["text"][:60] + "..." if len(item["text"]) > 60 else item["text"])
-                st.markdown(f"Score: `{item['score']:.3f}`")
-
-        # Show more results if top_k > 5
-        if top_k > 5:
-            cols2 = st.columns(min(top_k - 5, 5))
-            for i, item in enumerate(results[5:]):
-                with cols2[i % 5]:
-                    item_img = get_item_image(item["item_id"])
-                    if item_img:
-                        st.image(item_img, use_container_width=True)
-                    else:
-                        st.markdown("🖼️ *Image not available*")
-
-                    st.progress(max(0.0, min(1.0, item["score"])))
-                    st.markdown(f"**{item['category']}**")
-                    st.caption(item["text"][:60] + "..." if len(item["text"]) > 60 else item["text"])
-                    st.markdown(f"Score: `{item['score']:.3f}`")
+        st.subheader("Complete the Look")
+        show_outfit(slots)
 
 else:
-    # Show placeholder
-    st.markdown("---")
-    st.info("👆 Upload an image or use the camera to scan a clothing item to get started!")
+    if not (search_clicked if 'search_clicked' in dir() else False):
+        st.markdown("---")
+        st.info("👆 Upload an image, use the camera, or use Text search to get started!")
 
-
-# Footer
+# ── Footer ────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: gray;'>"
