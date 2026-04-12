@@ -1,10 +1,10 @@
-# 👗 Multimodal Fashion Outfit Recommendation
+# Multimodal Fashion Outfit Recommendation
 
 A multimodal machine learning system that recommends compatible clothing items given a fashion item image and/or text description. Built using image embeddings (EfficientNet-B0) and text embeddings (Sentence-BERT), fused together to learn fashion compatibility from real outfit data.
 
 ---
 
-## 👥 Team Members
+## Team Members
 
 | Name | Email |
 |------|-------|
@@ -14,7 +14,7 @@ A multimodal machine learning system that recommends compatible clothing items g
 
 ---
 
-## 🎯 Project Overview
+## Project Overview
 
 Given a clothing item (image + text description), this system recommends other items that are **stylistically compatible** and builds a **complete outfit** — for example:
 
@@ -25,7 +25,7 @@ The system learns compatibility by studying thousands of real outfits curated by
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Query Image + Text Description
@@ -60,7 +60,7 @@ Query Image + Text Description
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Tool | Purpose |
 |------|---------|
@@ -75,7 +75,7 @@ Query Image + Text Description
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Fashion-Outfit-Recommendation/
@@ -119,7 +119,7 @@ Fashion-Outfit-Recommendation/
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 ### 1. Clone the repository
 ```bash
@@ -147,7 +147,7 @@ python -c "from datasets import load_dataset; ds = load_dataset('Marqo/polyvore'
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ### Train the model
 ```bash
@@ -169,9 +169,9 @@ python src/main.py recommend --text "black leather boots" --topk 5
 streamlit run src/app.py
 ```
 Opens at `http://localhost:8501`. The app has 3 tabs:
-- **📁 Upload image** — upload a clothing photo to get a complete outfit
-- **📷 Camera scan** — use your webcam to scan a clothing item
-- **🔍 Text search** — type a description to build an outfit
+- **Upload image** — upload a clothing photo to get a complete outfit
+- **Camera scan** — use your webcam to scan a clothing item
+- **Text search** — type a description to build an outfit
 
 ### Run hyperparameter experiments
 ```bash
@@ -187,7 +187,7 @@ python src/experiment.py --compare
 
 ---
 
-## 📊 Results
+## Results
 
 > Trained on all ~19,000 outfits (94,096 items) for 10 epochs on Google Colab Tesla T4 GPU. Best model saved at epoch 3 based on validation loss.
 
@@ -223,7 +223,7 @@ The model is **18.57% more accurate** than random guessing at predicting fashion
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 1. **Dataset**: Items sharing the same outfit ID are compatible (positive pairs). Random items from different outfits form incompatible pairs (negative pairs).
 2. **Image Encoder**: EfficientNet-B0 extracts visual features → projected to 256-dim embedding.
@@ -235,14 +235,14 @@ The model is **18.57% more accurate** than random guessing at predicting fashion
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 - Model overfits after epoch 3 — more regularization needed for longer training
 - Text-only search produces lower confidence scores since the model is inherently multimodal
 - Static catalog — new items require rebuilding embeddings
 - Cosine similarity scores are low (0.3–0.5) due to frozen text encoder and limited training
 
-## 🔮 Future Improvements
+## Future Improvements
 
 - Fine-tune the text encoder for fashion-specific language
 - Hard negative mining for better compatibility learning
