@@ -44,7 +44,7 @@ def evaluate():
     # Load trained model
     print(f"Loading model from {CKPT_PATH}...")
     model = FashionCompatibilityModel().to(DEVICE)
-    model.load_state_dict(torch.load(CKPT_PATH, map_location=DEVICE))
+    model.load_state_dict(torch.load(CKPT_PATH, map_location=DEVICE), strict=False)
     model.eval()
 
     criterion = nn.BCELoss()
