@@ -146,7 +146,13 @@ python -c "from datasets import load_dataset; ds = load_dataset('Marqo/polyvore'
 > Note: The full dataset contains 94,096 items across ~19,000 outfits. Training on the full dataset requires a GPU. We trained on Google Colab using a Tesla T4 GPU.
 
 ---
+### 5. Build catalog embeddings
+```bash
+python src/recommend.py
+```
+This pre-computes embeddings for 10,000 catalog items. Required before running the web app. Only needs to be run once.
 
+> Note: `best_model.pt` and `catalog_embeddings.pt` are not included in the repo due to file size. Request them from the team or retrain on Google Colab.
 ## Usage
 
 ### Train the model
