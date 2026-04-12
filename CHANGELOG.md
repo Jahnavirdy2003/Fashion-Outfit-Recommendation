@@ -156,17 +156,71 @@ git commit -m "results: add outputs from 6 hyperparameter tuning experiments"
 
 ---
 
-## Experiment Results (to be filled after runs complete)
+## Experiment Results (Final)
 
 | Experiment | Outfits | Backbone | LR | Dropout | Accuracy | AUC | Best Epoch |
 |---|---|---|---|---|---|---|---|
-| exp1_baseline_5k_unfrozen | 5,000 | Unfrozen | 1e-4 | 0.3 | _pending_ | _pending_ | _pending_ |
-| exp2_frozen_backbone | 5,000 | Frozen | 1e-4 | 0.3 | _pending_ | _pending_ | _pending_ |
-| exp3_more_data_10k | 10,000 | Unfrozen | 1e-4 | 0.3 | _pending_ | _pending_ | _pending_ |
-| exp4_lower_lr_1e5 | 5,000 | Unfrozen | 1e-5 | 0.3 | _pending_ | _pending_ | _pending_ |
-| exp5_high_dropout | 5,000 | Unfrozen | 1e-4 | 0.5 | _pending_ | _pending_ | _pending_ |
-| exp6_best_combo | 10,000 | Frozen | 1e-5 | 0.3 | _pending_ | _pending_ | _pending_ |
+| exp1_baseline_5k_unfrozen | 5,000 | Unfrozen | 1e-4 | 0.3 | 69.00% | 0.7481 | 2 |
+| exp2_frozen_backbone | 5,000 | Frozen | 1e-4 | 0.3 | 66.89% | 0.7385 | 3 |
+| exp3_more_data_10k | 10,000 | Unfrozen | 1e-4 | 0.3 | 68.19% | 0.7550 | 2 |
+| exp4_lower_lr_1e5 | 5,000 | Unfrozen | 1e-5 | 0.3 | 61.86% | 0.6677 | 5 |
+| exp5_high_dropout | 5,000 | Unfrozen | 1e-4 | 0.5 | 69.06% | 0.7520 | 3 |
+| exp6_best_combo | 10,000 | Frozen | 1e-5 | 0.3 | 63.53% | 0.6847 | 5 |
+| exp7_20k_10epochs | 20,000 | Unfrozen | 1e-4 | 0.3 | 69.23% | 0.7665 | 3 |
+| exp12_allpairs_hardneg_5k | 5,000 | Unfrozen | 1e-4 | 0.3 | 55.95% | 0.5862 | 1 |
+| **exp13_40k_10epochs** | **40,000** | **Unfrozen** | **1e-4** | **0.3** | **70.14%** | **0.7767** | **2** |
+| exp14_anti_overfit | 40,000 | Unfrozen | 5e-5 | 0.5 | 60.69% | 0.6513 | 3 |
 
-Previous single-run results (before experiment system):
-- Accuracy: 69.75% (70.19% at best epoch)
-- AUC: 0.7632 (0.7517 on re-eval)
+**Best model: exp13_40k_10epochs** (AUC 0.7767, Accuracy 70.14%)
+
+Key insights:
+- More data consistently helped (5k→10k→20k→40k improved AUC)
+- LR 1e-4 validated as optimal; 1e-5 too slow for epoch budget
+- Fine-tuning backbone matters (frozen AUC dropped)
+- Hard negatives need more data to work (failed on 5k)
+- Anti-overfit settings (lower LR + higher dropout) were too restrictive
+- Architecture ceiling at ~70% accuracy — further gains need architectural changes
+
+---
+
+## Phase 5: Extended Experiments & Model Optimization
+
+### Experiments 7-14
+- **exp7_20k_10epochs** — scaled to 20k outfits, 10 epochs. AUC 0.7665.
+- **exp12_allpairs_hardneg_5k** — all within-outfit pairs + hard negative sampling on 5k. AUC dropped to 0.5862. Hard negatives too difficult for small dataset.
+- **exp13_40k_10epochs** — 40k outfits, 10 epochs. NEW BEST: AUC 0.7767, Acc 70.14%.
+- **exp14_anti_overfit** — 40k outfits, lr=5e-5, dropout=0.5, weight_decay=5e-4. Too restrictive, AUC dropped to 0.6513.
+
+### src/dataset.py — v2 MAJOR UPDATE
+- **All within-outfit pairs** — uses `itertools.combinations` to generate all item pairs, not just consecutive. ~2.7x more training pairs from same data.
+- **Hard negative sampling** — negatives sampled from same category as positive partner, forcing model to learn subtle compatibility differences.
+- **New parameters:** `pair_mode` ('consecutive' or 'all_pairs'), `hard_negatives` (True/False)
+- **Backward compatible** — old experiments still work with original settings.
+
+### src/experiment.py — UPDATED
+- Added `--pair_mode` and `--no_hard_neg` CLI flags
+- Config JSON logs pair generation strategy
+
+### src/recommend.py — UPDATED
+- Catalog size increased from 500 → 5,000 → 10,000 items
+- Better recommendation coverage with larger catalog
+
+### Best model deployed
+- `models/best_model.pt` — exp13's checkpoint (40k outfits, epoch 2)
+- `models/catalog_embeddings.pt` — 10,000 item catalog embeddings
+
+---
+
+## Phase 6: App Merge & Final Polish
+
+### src/app.py — MERGED (Kishan + Jahnavi)
+- Combined Kishan's outfit scorer + Jahnavi's text search into unified app
+- **Three modes in sidebar:**
+  1. Recommend items — upload/camera scan with auto-detect and outfit building
+  2. Text search (Jahnavi) — describe an item, find match, build outfit
+  3. Outfit scorer (Kishan) — upload 2-6 items, get compatibility score
+- **Shared functions:** `build_outfit()` and `show_outfit()` used by all modes
+- **Cosine similarity** for recommendations (reliable)
+- **Compatibility head** for outfit scoring (trained scorer)
+- Resolved merge conflict with Jahnavi's remote changes
+- Pushed to Jahnavi's repo: `github.com/Jahnavirdy2003/Fashion-Outfit-Recommendation`
