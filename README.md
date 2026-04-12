@@ -1,6 +1,6 @@
 # Multimodal Fashion Outfit Recommendation
 
-A multimodal machine learning system that recommends compatible clothing items given a fashion item description. Built using image embeddings (EfficientNet-B0) and text embeddings (Sentence-BERT), fused together to learn fashion compatibility from real outfit data.
+A multimodal machine learning system that recommends compatible clothing items given a fashion item image and/or text description. Built using image embeddings (EfficientNet-B0) and text embeddings (Sentence-BERT), fused together to learn fashion compatibility from real outfit data.
 
 ---
 
@@ -16,10 +16,10 @@ A multimodal machine learning system that recommends compatible clothing items g
 
 ## Project Overview
 
-Given a clothing item (image + text description), this system recommends other items that are **stylistically compatible** — for example:
+Given a clothing item (image + text description), this system recommends other items that are **stylistically compatible** and builds a **complete outfit** — for example:
 
-> Input: *"black leather boots"*
-> Output: black leggings, knit dress, tank top, sweatshirt
+> Input: *"wide leg blue jeans"*
+> Output: black bandeau top + black leather boots + denim jacket + Chanel bag + bracelet
 
 The system learns compatibility by studying thousands of real outfits curated by fashion stylists, combining both the **visual appearance** and **semantic meaning** of each clothing item.
 
@@ -29,22 +29,22 @@ The system learns compatibility by studying thousands of real outfits curated by
 
 ```
 Query Image + Text Description
-                │
-                ▼
+        │
+        ▼
 ┌───────────────────────────────┐
 │        ENCODING LAYER         │
 │  ImageEncoder  + TextEncoder  │
 │  (EfficientNet)  (SBERT)      │
-│       ↓               ↓       │
+│       ↓               ↓      │
 │     256-dim         256-dim   │
-│          └─── + ───┘          │
+│          └─── + ───┘         │
 │         Fused Embedding       │
 └───────────────┬───────────────┘
                 │
                 ▼
 ┌───────────────────────────────┐
 │      COMPATIBILITY LAYER      │
-│  |emb_A - emb_B| → MLP →      │
+│  |emb_A - emb_B| → MLP →     │
 │  score (0=incompatible,       │
 │         1=compatible)         │
 └───────────────┬───────────────┘
@@ -52,8 +52,9 @@ Query Image + Text Description
                 ▼
 ┌───────────────────────────────┐
 │         OUTPUT LAYER          │
-│  Top-K compatible items       │
-│  ranked by cosine similarity  │
+│  Complete outfit built via    │
+│  category-aware cosine        │
+│  similarity search            │
 └───────────────────────────────┘
 ```
 
@@ -66,10 +67,11 @@ Query Image + Text Description
 | PyTorch | Deep learning framework |
 | EfficientNet-B0 | Image feature extraction (pretrained on ImageNet) |
 | Sentence-BERT (all-MiniLM-L6-v2) | Text semantic embeddings |
-| Marqo/Polyvore Dataset | 94,096 fashion items available; 5,000–10,000 outfits used for training |
+| Marqo/Polyvore Dataset | 94,096 fashion items; trained on all ~19,000 outfits using GPU |
 | scikit-learn | AUC metric computation |
 | HuggingFace Datasets | Dataset loading |
-| Streamlit | Web UI with camera scan + image upload |
+| Streamlit | Web UI with image upload, camera scan, and text search |
+| Google Colab (T4 GPU) | Model training |
 
 ---
 
@@ -83,15 +85,15 @@ Fashion-Outfit-Recommendation/
 │
 ├── models/
 │   ├── best_model.pt          # Trained model checkpoint
-│   └── catalog_embeddings.pt  # Pre-computed catalog embeddings
+│   └── catalog_embeddings.pt  # Pre-computed catalog embeddings (10,000 items)
 │
 ├── experiments/               # Auto-generated experiment results
 │   ├── exp1_baseline_5k_unfrozen/
 │   ├── exp2_frozen_backbone/
-│   ├── ...                    # Each with config, logs, curves, ROC, scores
-│   ├── comparison.png         # Cross-experiment comparison chart
-│   ├── curves_overlay.png     # Overlaid training curves
-│   └── summary.csv            # Results summary table
+│   ├── ...
+│   ├── comparison.png
+│   ├── curves_overlay.png
+│   └── summary.csv
 │
 ├── notebooks/
 │   ├── 01_eda.ipynb           # Exploratory Data Analysis (in progress)
@@ -105,7 +107,7 @@ Fashion-Outfit-Recommendation/
 │   ├── evaluate.py            # Evaluation metrics (AUC + Accuracy)
 │   ├── recommend.py           # Inference + recommendations
 │   ├── experiment.py          # Experiment runner with auto insight generation
-│   ├── app.py                 # Streamlit web app (camera scan + upload)
+│   ├── app.py                 # Streamlit web app
 │   └── main.py                # CLI entry point
 │
 ├── run_all_experiments.sh     # Batch runner for all experiments
@@ -141,7 +143,7 @@ pip install -r requirements.txt
 ```bash
 python -c "from datasets import load_dataset; ds = load_dataset('Marqo/polyvore'); ds.save_to_disk('data/polyvore_outfits'); print('Done!')"
 ```
-> Note: The full dataset contains 94,096 items. We train on a subset of 500 outfits due to CPU constraints. A GPU is recommended for full dataset training.
+> Note: The full dataset contains 94,096 items across ~19,000 outfits. Training on the full dataset requires a GPU. We trained on Google Colab using a Tesla T4 GPU.
 
 ---
 
@@ -162,54 +164,52 @@ python src/main.py evaluate
 python src/main.py recommend --text "black leather boots" --topk 5
 ```
 
-### Launch web app (camera scan + image upload)
+### Launch web app
 ```bash
 streamlit run src/app.py
 ```
-Opens at `http://localhost:8501`. Access from your phone on the same WiFi using the Network URL for live camera scanning.
+Opens at `http://localhost:8501`. The app has 3 tabs:
+- **Upload image** — upload a clothing photo to get a complete outfit
+- **Camera scan** — use your webcam to scan a clothing item
+- **Text search** — type a description to build an outfit
 
 ### Run hyperparameter experiments
 ```bash
 # Run a single experiment
 python src/experiment.py --name my_exp --outfits 5000 --epochs 5 --lr 1e-4
 
-# Run all 6 predefined experiments
+# Run all predefined experiments
 ./run_all_experiments.sh
 
 # Compare results across all experiments
 python src/experiment.py --compare
 ```
 
-### Experiment options
-```bash
-python src/experiment.py \
-  --name experiment_name \    # Required: unique name for this run
-  --outfits 5000 \            # Number of outfits to train on (default: 5000)
-  --epochs 5 \                # Training epochs (default: 5)
-  --lr 1e-4 \                 # Learning rate (default: 1e-4)
-  --batch_size 32 \           # Batch size (default: 32)
-  --freeze \                  # Freeze EfficientNet backbone (default: unfrozen)
-  --dropout 0.3 \             # Dropout rate (default: 0.3)
-  --weight_decay 1e-4 \       # Weight decay (default: 1e-4)
-  --compare                   # Compare all experiments (no training)
-```
-
 ---
 
 ## Results
 
-> Results obtained by training on 5,000 outfits for 5 epochs on Apple M4 Max (MPS).
+> Trained on all ~19,000 outfits (94,096 items) for 10 epochs on Google Colab Tesla T4 GPU. Best model saved at epoch 3 based on validation loss.
 
 | Metric | Random Baseline | Our Model |
 |--------|----------------|-----------|
-| Accuracy | 50.00% | **69.75%** |
+| Accuracy | 50.00% | **68.57%** |
 | AUC | 0.5000 | **0.7632** |
 
-The model is **19.75% more accurate** than random guessing at predicting fashion compatibility.
+The model is **18.57% more accurate** than random guessing at predicting fashion compatibility.
+
+### Training Progress
+| Epoch | Train Loss | Train Acc | Val Loss | Val Acc |
+|-------|-----------|-----------|----------|---------|
+| 1 | 0.6508 | 60.48% | 0.6229 | 65.16% |
+| 2 | 0.5802 | 69.57% | 0.6069 | 67.49% |
+| **3** | **0.5119** | **75.42%** | **0.6052** | **68.57% ← best** |
+| 4 | 0.4355 | 80.73% | 0.6336 | 69.14% |
+| 5 | 0.3502 | 85.46% | 0.6523 | 69.80% |
+
+> Model began overfitting after epoch 3 — best checkpoint saved automatically.
 
 ### Hyperparameter Experiments
-We ran 6 experiments to systematically evaluate design choices:
-
 | Experiment | Outfits | Backbone | LR | Dropout | What it tests |
 |---|---|---|---|---|---|
 | Baseline | 5,000 | Unfrozen | 1e-4 | 0.3 | Starting point |
@@ -219,49 +219,31 @@ We ran 6 experiments to systematically evaluate design choices:
 | High dropout | 5,000 | Unfrozen | 1e-4 | 0.5 | Does stronger regularization help? |
 | Best combo | 10,000 | Frozen | 1e-5 | 0.3 | Combining best findings |
 
-Full results with training curves, ROC curves, and score distributions are in the `experiments/` folder.
-
-### Sample Output
-```
-Top 5 recommendations for query item:
-──────────────────────────────────────────────────
-  1. [0.621] Day Dresses — tibi knit long sleeve dress
-  2. [0.560] Day Dresses — oasis faux leather trim shift dress
-  3. [0.538] Tank Tops — wildfox cut tank black
-  4. [0.536] Leggings — topshop black heavy leggings
-  5. [0.491] Sweatshirts — black polka dots sweatshirt
-```
-
 ---
 
 ## How It Works
 
-1. **Dataset**: Items sharing the same outfit ID are treated as compatible (positive pairs). Random items from different outfits form incompatible pairs (negative pairs).
-
+1. **Dataset**: Items sharing the same outfit ID are compatible (positive pairs). Random items from different outfits form incompatible pairs (negative pairs).
 2. **Image Encoder**: EfficientNet-B0 extracts visual features → projected to 256-dim embedding.
-
 3. **Text Encoder**: Sentence-BERT encodes item descriptions → projected to 256-dim embedding.
-
 4. **Fusion**: Image and text embeddings are added element-wise and normalized → single 256-dim item embedding.
-
 5. **Compatibility Scoring**: `|emb_A - emb_B|` is passed through an MLP → compatibility score (0–1).
-
-6. **Recommendation**: Query item is embedded and compared against all catalog items using cosine similarity → top-K results returned.
+6. **Outfit Building**: Category-aware filtering ensures one item per slot (top, bottom, shoes, bag, jewelry, accessory) with no duplicates.
+7. **Recommendation**: Query item is embedded and compared against 10,000 catalog items using cosine similarity → complete outfit returned.
 
 ---
 
 ## Limitations
 
-- No category filtering (may recommend same category items)
+- Model overfits after epoch 3 — more regularization needed for longer training
+- Text-only search produces lower confidence scores since the model is inherently multimodal
 - Static catalog — new items require rebuilding embeddings
-- Recommendation quality improves significantly with more training data
-- Web app image lookup is sequential (could be optimized with index)
+- Cosine similarity scores are low (0.3–0.5) due to frozen text encoder and limited training
 
 ## Future Improvements
 
-- Train on full dataset using GPU for higher accuracy
-- Add category-aware filtering (e.g., boots → recommend tops/bottoms only)
 - Fine-tune the text encoder for fashion-specific language
 - Hard negative mining for better compatibility learning
-- Deploy Streamlit app to cloud for public access
+- Deploy Streamlit app to cloud (Streamlit Community Cloud) for public access
 - Add user preference personalization
+- Use contrastive loss instead of BCE for better embedding space geometry

@@ -31,7 +31,7 @@ val_transform = transforms.Compose([
 
 def load_model():
     model = FashionCompatibilityModel().to(DEVICE)
-    model.load_state_dict(torch.load(CKPT_PATH, map_location=DEVICE))
+    model.load_state_dict(torch.load(CKPT_PATH, map_location=DEVICE), strict=False)
     model.eval()
     return model
 
