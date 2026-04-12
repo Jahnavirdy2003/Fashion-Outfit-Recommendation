@@ -307,7 +307,7 @@ if page == "Recommend items":
             "4. Builds a complete compatible outfit"
         )
 
-    tab_upload, tab_camera = st.tabs(["Upload image", "Camera scan"])
+    tab_upload, tab_camera, tab_text = st.tabs(["Upload image", "Camera scan","Text search"])
 
     query_image = None
     with tab_upload:
@@ -323,6 +323,34 @@ if page == "Recommend items":
         camera_photo = st.camera_input("Scan a clothing item")
         if camera_photo:
             query_image = Image.open(camera_photo).convert("RGB")
+
+    with tab_text:
+        st.markdown("### 👗 Build Your Outfit")
+        st.markdown("Describe a clothing item and we'll build a complete outfit around it!")
+        text_query = st.text_input(
+            "Describe your item",
+            placeholder="e.g., wide leg blue jeans, black leather boots, floral summer dress"
+        )
+        search_clicked = st.button("✨ Build Outfit", type="primary")
+
+        if search_clicked and text_query:
+            with st.spinner("Building your outfit..."):
+                model      = load_model()
+                embeddings, metadata = load_catalog()
+                query_group = detect_group_from_text(text_query)
+                dummy_img  = Image.new("RGB", (224, 224), (200, 200, 200))
+                img_t      = val_transform(dummy_img).unsqueeze(0).to(DEVICE)
+                with torch.no_grad():
+                    query_emb = model.encode_item(img_t, [text_query], DEVICE).squeeze(0).cpu()
+                slots = build_outfit(query_emb, query_group, embeddings, metadata, 7)
+
+            st.markdown("---")
+            st.markdown(f"## ✨ Complete Outfit for: *{text_query}*")
+            st.markdown("### Complete the Look")
+            show_outfit(slots)
+
+        elif search_clicked and not text_query:
+            st.warning("Please enter a description first!")
 
     if query_image:
         st.markdown("---")
