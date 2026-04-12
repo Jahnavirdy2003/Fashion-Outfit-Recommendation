@@ -11,3 +11,6 @@ src/dataset_old.py
 src/model_old.py
 experiments/
 experiments/backups/
+src/appOld.py
+src/datasetOld.py
+src/experimentOld.py

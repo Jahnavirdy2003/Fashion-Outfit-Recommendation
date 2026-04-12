@@ -50,7 +50,7 @@ def collate_fn(batch):
 
 
 def run_experiment(name, num_outfits, epochs, lr, batch_size, freeze_backbone,
-                   dropout, weight_decay):
+                   dropout, weight_decay, pair_mode="all_pairs", hard_negatives=True):
     """Run a full experiment: train → evaluate → generate insights."""
 
     # ── Setup experiment folder ─────────────────────────
@@ -66,6 +66,8 @@ def run_experiment(name, num_outfits, epochs, lr, batch_size, freeze_backbone,
         "freeze_backbone": freeze_backbone,
         "dropout": dropout,
         "weight_decay": weight_decay,
+        "pair_mode": pair_mode,
+        "hard_negatives": hard_negatives,
         "device": str(DEVICE),
         "embed_dim": 256,
         "image_encoder": "EfficientNet-B0",
@@ -83,8 +85,10 @@ def run_experiment(name, num_outfits, epochs, lr, batch_size, freeze_backbone,
 
     # ── Load data ───────────────────────────────────────
     print("Loading datasets...")
-    train_ds = PolyvoreDataset("train", num_outfits=num_outfits)
-    val_ds   = PolyvoreDataset("val",   num_outfits=num_outfits)
+    train_ds = PolyvoreDataset("train", num_outfits=num_outfits,
+                               pair_mode=pair_mode, hard_negatives=hard_negatives)
+    val_ds   = PolyvoreDataset("val",   num_outfits=num_outfits,
+                               pair_mode=pair_mode, hard_negatives=hard_negatives)
 
     train_dl = DataLoader(train_ds, batch_size, shuffle=True,
                           num_workers=0, collate_fn=collate_fn)
@@ -532,6 +536,11 @@ if __name__ == "__main__":
     parser.add_argument("--freeze", action="store_true", help="Freeze image backbone")
     parser.add_argument("--dropout", type=float, default=0.3, help="Dropout rate")
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay")
+    parser.add_argument("--pair_mode", type=str, default="all_pairs",
+                        choices=["consecutive", "all_pairs"],
+                        help="Pair generation: 'consecutive' (original) or 'all_pairs' (improved)")
+    parser.add_argument("--no_hard_neg", action="store_true",
+                        help="Disable hard negative sampling (use random negatives)")
     parser.add_argument("--compare", action="store_true", help="Compare all experiments")
 
     args = parser.parse_args()
@@ -548,6 +557,8 @@ if __name__ == "__main__":
             freeze_backbone=args.freeze,
             dropout=args.dropout,
             weight_decay=args.weight_decay,
+            pair_mode=args.pair_mode,
+            hard_negatives=not args.no_hard_neg,
         )
     else:
         parser.print_help()
